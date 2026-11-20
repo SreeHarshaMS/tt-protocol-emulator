@@ -1,0 +1,59 @@
+# Tiny Tapeout project information
+project:
+  title:        "Programmable protocol emulator"      # Project title
+  author:       "SreeHarshaMS"      # Your name
+  discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
+  description:  "Tiny programmable pin-I/O core that runs UART, SPI and I2C as firmware, loaded over an SPI host port"      # One line description of what your project does
+  language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
+  clock_hz:     10000000       # Clock frequency in Hz (or 0 if not applicable)
+
+  # How many tiles your design occupies? The Jane Street competition allows up to 6x4 on CMOS5L.
+  tiles: "6x4"
+
+  # Your top module name must start with "tt_um_". Make it unique by including your github username:
+  top_module:  "tt_um_sreeharshams_protocol_emulator"
+
+  # List your project's source files here.
+  # Source files must be in ./src and you must list each source file separately, one per line.
+  # Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
+  source_files:
+    - "project.v"
+    - "host_if.v"
+    - "emu_core.v"
+    - "sync_fifo.v"
+
+# The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
+# This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
+pinout:
+  # Inputs
+  ui[0]: "HOST_SDI"
+  ui[1]: "HOST_SCK"
+  ui[2]: "HOST_CS_N"
+  ui[3]: ""
+  ui[4]: ""
+  ui[5]: ""
+  ui[6]: ""
+  ui[7]: ""
+
+  # Outputs
+  uo[0]: "HOST_SDO"
+  uo[1]: "HALTED"
+  uo[2]: "RX_EMPTY"
+  uo[3]: "TX_FULL"
+  uo[4]: "RUN"
+  uo[5]: ""
+  uo[6]: ""
+  uo[7]: ""
+
+  # Bidirectional pins
+  uio[0]: "PIN0 (SCL / UART TX / SPI SCK)"
+  uio[1]: "PIN1 (SDA / SPI MOSI)"
+  uio[2]: "PIN2 (SPI MISO)"
+  uio[3]: "PIN3 (SPI CS_N)"
+  uio[4]: "PIN4"
+  uio[5]: "PIN5"
+  uio[6]: "PIN6"
+  uio[7]: "PIN7"
+
+# Do not change!
+yaml_version: 6

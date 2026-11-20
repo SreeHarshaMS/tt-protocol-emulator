@@ -1,0 +1,22 @@
+# Vivado xsim output
+xsim.dir/
+*.wdb
+*.jou
+*.pb
+*.log
+wave.tcl
+dfx_runtime.txt
+run_*.txt
+.Xil/
+
+# Icarus / cocotb output
+*.vvp
+test/sim_build/
+test/results.xml
+test/*.fst
+test/*.vcd
+__pycache__/
+
+# Tiny Tapeout flow output
+runs/
+tt_submission/

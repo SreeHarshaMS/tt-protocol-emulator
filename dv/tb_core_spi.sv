@@ -1,0 +1,107 @@
+`timescale 1ns/1ps
+// Firmware test: SPI mode 0 master as firmware. Pins: 0=SCK, 1=MOSI, 2=MISO, 3=CS_n.
+module tb_core_spi;
+  import emu_isa_pkg::*;
+
+  logic        clk = 0, rst_n = 0, run = 0;
+  logic        prog_we = 0;
+  logic [5:0]  prog_addr = 0;
+  logic [15:0] prog_data = 0;
+  logic        tx_wr = 0;
+  logic [7:0]  tx_wdata = 0;
+  logic        tx_full;
+  logic        rx_rd = 0;
+  logic [7:0]  rx_rdata;
+  logic        rx_empty;
+  logic [7:0]  pin_out, pin_oe;
+  logic        halted;
+  logic [15:0] prog [64];
+  logic        miso;
+  logic [7:0]  slv_rx;
+  logic [7:0]  rd;
+  int          errors = 0;
+
+  tri1 [7:0] pad;
+  wire [7:0] pin_in = pad;
+  genvar g;
+  generate
+    for (g = 0; g < 8; g++) begin : g_pad
+      assign pad[g] = pin_oe[g] ? pin_out[g] : 1'bz;
+    end
+  endgenerate
+  assign pad[2] = miso;
+
+  emu_core dut (
+    .clk(clk), .rst_n(rst_n), .run(run),
+    .prog_we(prog_we), .prog_addr(prog_addr), .prog_data(prog_data),
+    .tx_wr(tx_wr), .tx_wdata(tx_wdata), .tx_full(tx_full),
+    .rx_rd(rx_rd), .rx_rdata(rx_rdata), .rx_empty(rx_empty),
+    .pin_in(pin_in), .pin_out(pin_out), .pin_oe(pin_oe), .halted(halted));
+
+  spi_slave_model #(.CPOL(0), .CPHA(0)) slv (
+    .sck(pad[0]), .cs_n(pad[3]), .mosi(pad[1]), .miso(miso), .rx(slv_rx));
+
+  always #5 clk = ~clk;
+
+  task automatic xfer(input logic [7:0] b);
+    do @(posedge clk); while (tx_full);
+    tx_wr <= 1'b1; tx_wdata <= b;
+    @(posedge clk);
+    tx_wr <= 1'b0;
+    do @(posedge clk); while (rx_empty);
+    rd = rx_rdata;
+    rx_rd <= 1'b1;
+    @(posedge clk);
+    rx_rd <= 1'b0;
+    if (rd !== 8'hA5 || slv_rx !== b) begin
+      errors++;
+      $display("FAIL: sent %02h: core rx=%02h (want A5), slave rx=%02h", b, rd, slv_rx);
+    end else $display("ok  : sent %02h, core rx=%02h, slave rx=%02h", b, rd, slv_rx);
+  endtask
+
+  initial begin
+    for (int i = 0; i < 64; i++) prog[i] = i_nop();
+    prog[0]  = i_oe(0, 1);
+    prog[1]  = i_oe(1, 1);
+    prog[2]  = i_oe(3, 1);
+    prog[3]  = i_set(0, 0);       // SCK idle low
+    prog[4]  = i_set(3, 1);       // CS_n idle high
+    prog[5]  = i_pull();
+    prog[6]  = i_set(3, 0);       // CS_n low
+    prog[7]  = i_loadx(7);
+    prog[8]  = i_out(1, 1);       // MOSI, MSB first
+    prog[9]  = i_wait(2);
+    prog[10] = i_set(0, 1);       // SCK rising edge
+    prog[11] = i_in(2, 1);        // sample MISO, MSB first
+    prog[12] = i_wait(1);
+    prog[13] = i_set(0, 0);       // SCK falling edge
+    prog[14] = i_djnz(8);
+    prog[15] = i_wait(3);
+    prog[16] = i_set(3, 1);       // CS_n high
+    prog[17] = i_push();
+    prog[18] = i_jmp(5);
+
+    repeat (4) @(posedge clk);
+    rst_n = 1;
+    repeat (2) @(posedge clk);
+    for (int i = 0; i < 64; i++) begin
+      @(posedge clk);
+      prog_we <= 1'b1; prog_addr <= i[5:0]; prog_data <= prog[i];
+    end
+    @(posedge clk);
+    prog_we <= 1'b0;
+    run <= 1'b1;
+
+    xfer(8'h3C);
+    xfer(8'hC3);
+    if (errors == 0) $display("TB_CORE_SPI PASS");
+    else             $display("TB_CORE_SPI FAIL (%0d errors)", errors);
+    $finish;
+  end
+
+  initial begin
+    #1ms;
+    $display("TB_CORE_SPI FAIL: timeout");
+    $finish;
+  end
+endmodule
